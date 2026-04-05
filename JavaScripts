@@ -1,0 +1,43 @@
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const fs = require('fs');
+require('dotenv').config();
+
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+});
+
+client.commands = new Collection();
+client.owner = "astro_.exe";
+
+// Command Handler: Loads all files from the /commands folder
+const commandFolders = fs.readdirSync('./commands');
+for (const folder of commandFolders) {
+    const commandFiles = fs.readdirSync(`./commands/${folder}`).filter(file => file.endsWith('.js'));
+    for (const file of commandFiles) {
+        const command = require(`./commands/${folder}/${file}`);
+        client.commands.set(command.name, command);
+    }
+}
+
+client.once('ready', () => {
+    console.log(`JARVIS is online. System managed by ${client.owner}`);
+});
+
+client.on('messageCreate', message => {
+    if (!message.content.startsWith('!') || message.author.bot) return;
+
+    const args = message.content.slice(1).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    const command = client.commands.get(commandName);
+    if (!command) return;
+
+    try {
+        command.execute(message, args, client);
+    } catch (error) {
+        console.error(error);
+        message.reply('There was an error executing that command.');
+    }
+});
+
+client.login(process.env.TOKEN);
